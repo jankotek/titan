@@ -5,7 +5,7 @@ import com.thinkaurelius.titan.diskstorage.keycolumnvalue.SliceQuery;
 import com.thinkaurelius.titan.graphdb.configuration.GraphDatabaseConfiguration;
 import com.thinkaurelius.titan.hadoop.FaunusVertex;
 import com.thinkaurelius.titan.hadoop.formats.util.TitanInputFormat;
-import com.thinkaurelius.titan.diskstorage.hbase.HBaseStoreManager;
+//import com.thinkaurelius.titan.diskstorage.hbase.HBaseStoreManager;
 
 import com.thinkaurelius.titan.hadoop.formats.util.input.TitanHadoopSetupCommon;
 import org.apache.hadoop.conf.Configuration;
@@ -54,7 +54,7 @@ public class TitanHBaseInputFormat extends TitanInputFormat {
         super.setConf(config);
 
         //config.set(TableInputFormat.SCAN_COLUMN_FAMILY, Backend.EDGESTORE_NAME);
-        config.set(TableInputFormat.INPUT_TABLE, inputConf.get(HBaseStoreManager.HBASE_TABLE));
+//        config.set(TableInputFormat.INPUT_TABLE, inputConf.get(HBaseStoreManager.HBASE_TABLE));
         //config.set(HConstants.ZOOKEEPER_QUORUM, config.get(TITAN_HADOOP_GRAPH_INPUT_TITAN_STORAGE_HOSTNAME));
         config.set(HConstants.ZOOKEEPER_QUORUM, inputConf.get(GraphDatabaseConfiguration.STORAGE_HOSTS)[0]);
 //        if (basicConf.get(TITAN_HADOOP_GRAPH_INPUT_TITAN_STORAGE_PORT, null) != null)
@@ -64,13 +64,13 @@ public class TitanHBaseInputFormat extends TitanInputFormat {
         log.debug("hbase.security.authentication={}", config.get("hbase.security.authentication"));
         Scan scanner = new Scan();
         // TODO the mapping is private in HBaseStoreManager and leaks here -- replace String database/CF names with an enum where each value has both a short and long name
-        if (inputConf.get(HBaseStoreManager.SHORT_CF_NAMES)) {
-            scanner.addFamily("e".getBytes());
-            edgestoreFamily = Bytes.toBytes("e");
-        } else {
+//        if (inputConf.get(HBaseStoreManager.SHORT_CF_NAMES)) {
+//            scanner.addFamily("e".getBytes());
+//            edgestoreFamily = Bytes.toBytes("e");
+//        } else {
             scanner.addFamily(Backend.EDGESTORE_NAME.getBytes());
             edgestoreFamily = Bytes.toBytes(Backend.EDGESTORE_NAME);
-        }
+//        }
         //scanner.setFilter(getColumnFilter(titanSetup.inputSlice(this.vertexQuery)));
         scanner.setFilter(getColumnFilter(TitanHadoopSetupCommon.getDefaultSliceQuery()));
         //TODO (minor): should we set other options in http://hbase.apache.org/apidocs/org/apache/hadoop/hbase/client/Scan.html for optimization?

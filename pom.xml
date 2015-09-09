@@ -115,6 +115,7 @@
         <module>titan-core</module>
         <module>titan-test</module>
         <module>titan-berkeleyje</module>
+        <module>titan-mapdb</module>
         <module>titan-cassandra</module>
         <module>titan-hadoop-parent</module>
         <module>titan-hbase-parent</module>

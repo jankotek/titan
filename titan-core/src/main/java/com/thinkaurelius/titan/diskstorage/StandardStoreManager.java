@@ -11,6 +11,7 @@ import java.util.*;
  */
 public enum StandardStoreManager {
     BDB_JE("com.thinkaurelius.titan.diskstorage.berkeleyje.BerkeleyJEStoreManager", "berkeleyje"),
+    MAPDB("com.thinkaurelius.titan.diskstorage.mapdb.MapDBStoreManager", "mapdb"),
     CASSANDRA_THRIFT("com.thinkaurelius.titan.diskstorage.cassandra.thrift.CassandraThriftStoreManager", "cassandrathrift"),
     CASSANDRA_ASTYANAX("com.thinkaurelius.titan.diskstorage.cassandra.astyanax.AstyanaxStoreManager", ImmutableList.of("cassandra", "astyanax")),
     CASSANDRA_EMBEDDED("com.thinkaurelius.titan.diskstorage.cassandra.embedded.CassandraEmbeddedStoreManager", "embeddedcassandra"),
