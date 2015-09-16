@@ -21,9 +21,6 @@ public class MapDBKeyValueStore implements OrderedKeyValueStore {
 
     private static final Logger log = LoggerFactory.getLogger(MapDBKeyValueStore.class);
 
-
-
-
     private final String name;
     private final MapDBStoreManager manager;
     private boolean isOpen;
@@ -61,7 +58,6 @@ public class MapDBKeyValueStore implements OrderedKeyValueStore {
 
     @Override
     public void acquireLock(StaticBuffer key, StaticBuffer expectedValue, StoreTransaction txh) throws BackendException {
-
     }
 
 

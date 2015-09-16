@@ -70,9 +70,9 @@ public class MapDBTx extends AbstractStoreTransaction {
                 StaticBuffer key = e.getKey().b;
                 StaticBuffer value = e.getValue();
                 if(value==TOMBSTONE)
-                    map.remove(key);
+                    map.remove(toArray(key));
                 else
-                    map.put(key,value);
+                    map.put(toArray(key),toArray(value));
             }
 
 //            closeOpenIterators();
@@ -100,22 +100,25 @@ public class MapDBTx extends AbstractStoreTransaction {
                 return null;
             return ret;
         }
-        return (StaticBuffer) db.treeMap(name).get(key);
+        byte[] ret2 = (byte[]) db.treeMap(name).get(toArray(key));
+        return ret2==null ? null : new StaticArrayBuffer(ret2);
     }
 
     public List<KeyValueEntry> getSlice(String name, KeySelector selector,
                                         StaticBuffer keyStart, StaticBuffer keyEnd){
 
         final List<KeyValueEntry> result = new ArrayList<KeyValueEntry>();
-        NavigableMap<StaticBuffer,StaticBuffer> map = db.treeMap(name);
+        NavigableMap<byte[],byte[]> map = db.treeMap(name);
+        byte[] keyStartB = toArray(keyStart);
+        byte[] keyEndB = toArray(keyEnd);
         //get original stuff
-        if(map.comparator().compare(keyStart,keyEnd)<0) {
-            Set<Map.Entry<StaticBuffer, StaticBuffer>> range = map.subMap(keyStart, keyEnd).entrySet();
+        if(map.comparator().compare(keyStartB,keyEndB)<0) {
+            Set<Map.Entry<byte[], byte[]>> range = map.subMap(keyStartB, keyEndB).entrySet();
 
             StaticBuffer oldKey = keyStart;
 
-            mainLoop: for (Map.Entry<StaticBuffer, StaticBuffer> e : range) {
-                StaticBuffer foundKey = e.getKey();
+            mainLoop: for (Map.Entry<byte[], byte[]> e : range) {
+                StaticBuffer foundKey = new StaticArrayBuffer(e.getKey());
                 if (selector.reachedLimit())
                     break mainLoop;
 
@@ -147,7 +150,7 @@ public class MapDBTx extends AbstractStoreTransaction {
                     continue mainLoop;
 
                 if(value==null)
-                    value = e.getValue();
+                    value = new StaticArrayBuffer(e.getValue());
 
                 // and is accepted by selector
                 if (selector.include(foundKey)) {
@@ -189,7 +192,7 @@ public class MapDBTx extends AbstractStoreTransaction {
             modifiedData.put(new Fun.Pair(name, key), value);
         }else {
             //check that key does not exist
-            if(!db.treeMap(name).containsKey(key)){
+            if(!db.treeMap(name).containsKey(toArray(key))){
                 Object old = modifiedData.get(new Fun.Pair(name,key));
                 if(old!=null && old!=TOMBSTONE){
                     throw new PermanentBackendException("Key already exists on no-overwrite.");
@@ -217,4 +220,10 @@ public class MapDBTx extends AbstractStoreTransaction {
             super(msg);
         }
     }
+
+
+    static byte[] toArray(StaticBuffer buf) {
+        return buf.getBytes(0, buf.length());
+    }
+
 }

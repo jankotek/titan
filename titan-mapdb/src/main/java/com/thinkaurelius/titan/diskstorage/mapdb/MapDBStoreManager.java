@@ -24,6 +24,7 @@ import com.thinkaurelius.titan.util.system.IOUtils;
 import org.mapdb.DB;
 import org.mapdb.DBException;
 import org.mapdb.DBMaker;
+import org.mapdb.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,32 +35,31 @@ import java.util.Map;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import static com.thinkaurelius.titan.diskstorage.configuration.ConfigOption.disallowEmpty;
-
 
 @PreInitializeConfigOptions
 public class MapDBStoreManager extends LocalStoreManager implements OrderedKeyValueStoreManager {
 
     private static final Logger log = LoggerFactory.getLogger(MapDBStoreManager.class);
 
-    public static final ConfigNamespace BERKELEY_NS =
-            new ConfigNamespace(GraphDatabaseConfiguration.STORAGE_NS, "berkeleydb", "BerkeleyDB configuration options");
+    public static final ConfigNamespace MAPDB_NS =
+            new ConfigNamespace(GraphDatabaseConfiguration.STORAGE_NS, "mapdb", "MapDB configuration options");
 
-    public static final ConfigOption<Integer> JVM_CACHE =
-            new ConfigOption<Integer>(BERKELEY_NS,"cache-percentage",
-            "Percentage of JVM heap reserved for BerkeleyJE's cache",
-            ConfigOption.Type.MASKABLE, 65, ConfigOption.positiveInt());
+    public static final ConfigOption<Integer> NODE_SIZE =
+            new ConfigOption<Integer>(MAPDB_NS,"nodeSize",
+            "Maximal BTree node size",
+            ConfigOption.Type.MASKABLE, 32, ConfigOption.positiveInt());
 
-//    public static final ConfigOption<LockMode> LOCK_MODE =
-//            new ConfigOption<LockMode>(BERKELEY_NS, "lock-mode",
-//            "The BDB record lock mode used for read operations",
-//            ConfigOption.Type.MASKABLE, LockMode.class, LockMode.DEFAULT, disallowEmpty(LockMode.class));
+    public static final ConfigOption<Boolean> VALUES_OUTSIDE_NODE =
+            new ConfigOption<Boolean>(MAPDB_NS,"valuesOutsideNode",
+                    "If values should be stored outside of BTree nodes",
+                    ConfigOption.Type.LOCAL, false);
 
-    public static final ConfigOption<IsolationLevel> ISOLATION_LEVEL =
-            new ConfigOption<IsolationLevel>(BERKELEY_NS, "isolation-level",
-            "The isolation level used by transactions",
-            ConfigOption.Type.MASKABLE,  IsolationLevel.class,
-            IsolationLevel.SERIALIZABLE, disallowEmpty(IsolationLevel.class));
+
+    public static final ConfigOption<Integer> CACHE_SIZE =
+            new ConfigOption<Integer>(MAPDB_NS,"cachesize",
+                    "Size of cache for MapDB store",
+                    ConfigOption.Type.MASKABLE, 1024*4, ConfigOption.positiveInt());
+
 
     private final Map<String, MapDBKeyValueStore> stores;
 
@@ -67,12 +67,17 @@ public class MapDBStoreManager extends LocalStoreManager implements OrderedKeyVa
     protected final Lock commitLock = new ReentrantLock();
 //    protected Environment environment;
     protected final StoreFeatures features;
+    protected final boolean valuesOutsideNodes;
+    protected final int nodeSize;
 
     public MapDBStoreManager(Configuration configuration) throws BackendException {
         super(configuration);
         stores = new HashMap<String, MapDBKeyValueStore>();
 
-        int cachePercentage = configuration.get(JVM_CACHE);
+        int cacheSize = configuration.get(CACHE_SIZE);
+        valuesOutsideNodes = configuration.get(VALUES_OUTSIDE_NODE);
+        nodeSize = configuration.get(NODE_SIZE);
+
 
         features = new StandardStoreFeatures.Builder()
                     .orderedScan(true)
@@ -85,10 +90,13 @@ public class MapDBStoreManager extends LocalStoreManager implements OrderedKeyVa
         DBMaker.Maker maker =  DBMaker.fileDB(new File(directory, "titanBackEnd.mapdb"))
                 .fileLockDisable()
                 .fileMmapEnableIfSupported()
+                .cacheHashTableEnable(cacheSize)
                 .serializerClassLoader(MapDBStoreManager.class.getClassLoader());
 
-//        if(transactional)
-//            maker.transactionDisable();
+        if(batchLoading) {
+            maker.transactionDisable();
+            maker.asyncWriteEnable();
+        }
 
         db = maker.make();
 
@@ -153,15 +161,18 @@ public class MapDBStoreManager extends LocalStoreManager implements OrderedKeyVa
         try {
             //make sure map exists
             if(db.get(name)==null) {
-                db.treeMapCreate(name)
-                        .keySerializer(new BufferSerializer())
-                        .valueSerializer(new BufferSerializer())
-                        .nodeSize(12)
-                        .valuesOutsideNodesEnable()
-                        .makeOrGet();
+                DB.BTreeMapMaker maker = db.treeMapCreate(name)
+                        .keySerializer(Serializer.BYTE_ARRAY)
+                        .valueSerializer(Serializer.BYTE_ARRAY)
+                        .nodeSize(nodeSize);
+
+                if(valuesOutsideNodes)
+                    maker.valuesOutsideNodesEnable();
+                maker.makeOrGet();
+
+
                 db.commit();
             }
-            //TODO race condition, use ConsistencyLock or something
 
             log.debug("Opened database {}", name, new Throwable());
 
