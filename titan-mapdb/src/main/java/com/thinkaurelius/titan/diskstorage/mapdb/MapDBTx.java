@@ -65,7 +65,10 @@ public class MapDBTx extends AbstractStoreTransaction {
 
             //apply modified data
             Map map;
-            for (Map.Entry<Fun.Pair<String,StaticBuffer>, StaticBuffer> e : modifiedData.entrySet()) {
+            Iterator<Map.Entry<Fun.Pair<String,StaticBuffer>, StaticBuffer>> iter = modifiedData.entrySet().iterator();
+            while(iter.hasNext()) {
+                Map.Entry<Fun.Pair<String,StaticBuffer>, StaticBuffer> e = iter.next();
+                iter.remove();
                 map = db.treeMap(e.getKey().a);
                 StaticBuffer key = e.getKey().b;
                 StaticBuffer value = e.getValue();
