@@ -64,12 +64,16 @@ public class MapDBTx extends AbstractStoreTransaction {
                 log.trace("{} committed", this.toString(), new TransactionClose(this.toString()));
 
             //apply modified data
-            Map map;
+            Map map = null;
+            String oldName = "";
             Iterator<Map.Entry<Fun.Pair<String,StaticBuffer>, StaticBuffer>> iter = modifiedData.entrySet().iterator();
             while(iter.hasNext()) {
                 Map.Entry<Fun.Pair<String,StaticBuffer>, StaticBuffer> e = iter.next();
                 iter.remove();
-                map = db.treeMap(e.getKey().a);
+                if(!oldName.equals(e.getKey().a)) {
+                    map = db.treeMap(e.getKey().a);
+                    oldName = e.getKey().a;
+                }
                 StaticBuffer key = e.getKey().b;
                 StaticBuffer value = e.getValue();
                 if(value==TOMBSTONE)
